@@ -1,3 +1,5 @@
+from django.db.models import query
+from django.db.models.query import QuerySet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -40,9 +42,23 @@ class RecipeViewSet(viewsets.ModelViewSet):
   authentication_classes = (TokenAuthentication,)
   permission_classes = (IsAuthenticated,)
 
+  def _params_to_int(self, qs):
+    """Convert a list of stings to integers"""
+    return [int(str_id) for str_id in qs.split(',')]
+
   def get_queryset(self):
-    """return recipes for the current authenticated user only"""
-    return self.queryset.filter(user=self.request.user)
+    """return objects for the current authenticated user only"""
+    tags = self.request.query_params.get('tags')
+    ingredients = self.request.query_params.get('ingredients')
+    queryset = self.queryset
+    if tags:
+      tag_ids = self._params_to_int(tags)
+      queryset = queryset.filter(tags__id__in=tag_ids)
+    if ingredients:
+      ingredients_ids = self._params_to_int(ingredients)
+      queryset = queryset.filter(ingredients__id__in=ingredients_ids)
+
+    return queryset.filter(user=self.request.user)
 
   def get_serializer_class(self):
     """Return appropriate serializer class"""
